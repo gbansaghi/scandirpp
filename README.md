@@ -143,23 +143,23 @@ Whenever `scandir` returns successfully, it `malloc`s enough memory to hold _n_ 
 ```c++
 #include <dirent.h>
 
-       int
-       main(void)
-       {
-           struct dirent **namelist;
-           int n;
+int
+main(void)
+{
+   struct dirent **namelist;
+   int n;
 
-           n = scandir(".", &namelist, NULL, alphasort);
-           if (n < 0)
-               perror("scandir");
-           else {
-               while (n--) {
-                   printf("%s\n", namelist[n]->d_name);
-                   free(namelist[n]);
-               }
-               free(namelist);
-           }
+   n = scandir(".", &namelist, NULL, alphasort);
+   if (n < 0)
+       perror("scandir");
+   else {
+       while (n--) {
+           printf("%s\n", namelist[n]->d_name);
+           free(namelist[n]);
        }
+       free(namelist);
+   }
+}
 ```
 
 This is obviously only suitable if the code within the `while (n--) {}` block never throws, otherwise memory will be leaked. However, by constructing a `std::unique_ptr` from each pointer, memory safety is assured: whenever a `unique_ptr` is destroyed, it calls `delete` on the underlying raw pointer, which in turn ensures that the associated memory is freed.
