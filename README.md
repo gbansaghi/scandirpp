@@ -73,12 +73,12 @@ The library defines the `scandirpp::ScandirException` class, which derives from 
 
 ## Advanced usage
 ### Extractors
-As mentioned in [Basic usage](#basic-usage), the standard defines two data members for `struct dirent`: `d_name` and `d_ino`. However, your system may provide additional members. For example, under Xubuntu 16.04, there are three additional members: `d_off`, `d_reclen` and `d_type`. While it is certainly possible to access these extra members by using `get_entries`, that approach leads to redundant and less maintainable code. Instead, extra members can be accessed by defining a custom extractor.
+As mentioned in [Basic usage](#basic-usage), the standard defines two data members for `struct dirent`: `d_name` and `d_ino`. However, your system may provide additional members. For example, under Xubuntu 16.04, there are three additional members: `d_off`, `d_reclen` and `d_type`. While it is certainly possible to access these extra members by using `get_entries`, that approach could lead to redundant and less maintainable code. Instead, extra members can be accessed by defining a custom extractor.
 
-Exractors are callables taking a `struct dirent&` and returning the desired value. For example, `get_names` uses the `scandirpp::extract_name` method, defined as:
+Exractors are callables taking a `const struct dirent&` and returning the desired value. For example, `get_names` uses the `scandirpp::extract_name` method, defined as:
 
 ```c++
-inline std::string extract_name(struct dirent& entry) {
+inline std::string extract_name(const struct dirent& entry) {
     return entry.d_name;
 }
 ```
@@ -88,7 +88,7 @@ Similarly, `get_entries` and `get_inos` use `extract_entry` and `extract_ino`, r
 Custom extractors can be used with `scandirpp::get_vector`. This function behaves exactly like `get_entries`, `get_names` etc. except it must be passed the extractor as its second argument (default values omitted for clarity):
 
 ```c++
-template<class ValueType, class ValueExtractor, class ValueFilter, class EntryFilter>
+template<class ValueExtractor, class ValueType, class ValueFilter, class EntryFilter>
 std::vector<ValueType> get_vector(const std::string& dir,
                                   ValueExtractor&& value_extractor,
                                   ValueFilter&& value_filter,
@@ -109,6 +109,8 @@ for (const auto& reclen : scandirpp::get_vector(".", extractor /*, value_filter,
 }
 ```
 
+Note that the actual type of `d_reclen` does not appear anywhere in the above example: it is implicitly deduced in the lambda, and it is declared `auto` in the for-loop.
+
 ### Custom containers
 Collecting results in container types other than `std::vector` is possible with `scandirpp::get_values`. The signature is almost identical to `get_vector`, except for an additional required argument (`result`):
 
@@ -121,14 +123,14 @@ void get_values(const std::string& dir,
                 EntryFilter entry_filter)
 ```
 
-`result` must support being assigned an object of the type returned by `value_extractor`. Note that default extractors and filters can be used here.
+`result` must support being assigned an object of the type returned by `value_extractor`. Note that default extractors and filters can be used here (`value_filter` and `entry_filter` both default to `scandirpp::default_filter`).
 
 ```c++
 // Just like get_names, but place results in a set instead of a vector
 
 std::set<std::string> names;
 
-scandirpp::get_values(".", std::inserter(names, names.back()), scandirpp::extract_name, scandirpp::default_filter, scandirpp::default_filter);
+scandirpp::get_values(".", std::inserter(names, names.back()), scandirpp::extract_name);
 ```
 
 ### Low-level access

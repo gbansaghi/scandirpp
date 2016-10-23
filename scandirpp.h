@@ -4,6 +4,7 @@
 #include <exception>
 #include <memory>
 #include <vector>
+#include <utility>
 
 namespace scandirpp {
   typedef std::unique_ptr<struct dirent> EntryPtr;
@@ -28,24 +29,27 @@ namespace scandirpp {
   template<class T>
   bool default_filter(const T&) { return true; }
 
-  inline struct dirent extract_entry(struct dirent& entry) {
-    return entry;
+  inline struct dirent extract_entry(const struct dirent& entry) {
+    return {entry};
   }
 
-  inline std::string extract_name(struct dirent& entry) {
+  inline std::string extract_name(const struct dirent& entry) {
     return entry.d_name;
   }
 
-  inline ino_t extract_ino(struct dirent& entry) {
+  inline ino_t extract_ino(const struct dirent& entry) {
     return entry.d_ino;
   }
 
-  template<class OutputIterator, class ValueExtractor, class ValueFilter, class EntryFilter>
+  template<class OutputIterator,
+           class ValueExtractor,
+           class ValueFilter = bool (*)(const decltype(std::declval<ValueExtractor>()(std::declval<const struct dirent>()))&),
+           class EntryFilter = bool (*)(const struct dirent&)>
   inline void get_values(const std::string& dir,
                          OutputIterator result,
                          ValueExtractor value_extractor,
-                         ValueFilter value_filter,
-                         EntryFilter entry_filter)
+                         ValueFilter value_filter = default_filter,
+                         EntryFilter entry_filter = default_filter)
   {
     const EntryPtrVector& entry_ptrs = get_entry_ptrs(dir);
 
@@ -63,7 +67,10 @@ namespace scandirpp {
     std::for_each(entry_ptrs.begin(), entry_ptrs.end(), copy_matching);
   }
 
-  template<class ValueType, class ValueExtractor, class ValueFilter = bool (*)(const struct dirent&), class EntryFilter = bool (*)(const struct dirent&)>
+  template<class ValueExtractor,
+           class ValueType   = decltype(std::declval<ValueExtractor>()(std::declval<const struct dirent>())),
+           class ValueFilter = bool (*)(const ValueType&),
+           class EntryFilter = bool (*)(const struct dirent&)>
   inline std::vector<ValueType> get_vector(const std::string& dir,
                                            ValueExtractor&& value_extractor,
                                            ValueFilter&& value_filter = default_filter,
@@ -80,7 +87,7 @@ namespace scandirpp {
                                                 ValueFilter&& value_filter = default_filter,
                                                 EntryFilter&& entry_filter = default_filter)
   {
-    return get_vector<struct dirent>(dir, extract_entry, std::forward<ValueFilter>(value_filter), std::forward<EntryFilter>(entry_filter));
+    return get_vector(dir, extract_entry, std::forward<ValueFilter>(value_filter), std::forward<EntryFilter>(entry_filter));
   }
 
   template<class ValueFilter = bool (*)(const std::string&), class EntryFilter = bool (*)(const struct dirent&)>
@@ -88,7 +95,7 @@ namespace scandirpp {
                                             ValueFilter&& value_filter = default_filter,
                                             EntryFilter&& entry_filter = default_filter)
   {
-    return get_vector<std::string>(dir, extract_name, std::forward<ValueFilter>(value_filter), std::forward<EntryFilter>(entry_filter));
+    return get_vector(dir, extract_name, std::forward<ValueFilter>(value_filter), std::forward<EntryFilter>(entry_filter));
   }
 
   template<class ValueFilter = bool (*)(const ino_t&), class EntryFilter = bool (*)(const struct dirent&)>
@@ -96,7 +103,7 @@ namespace scandirpp {
                                      ValueFilter&& value_filter = default_filter,
                                      EntryFilter&& entry_filter = default_filter)
   {
-    return get_vector<ino_t>(dir, extract_ino, std::forward<ValueFilter>(value_filter), std::forward<EntryFilter>(entry_filter));
+    return get_vector(dir, extract_ino, std::forward<ValueFilter>(value_filter), std::forward<EntryFilter>(entry_filter));
   }
 
 }
