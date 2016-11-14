@@ -130,7 +130,7 @@ void get_values(const std::string& dir,
 
 std::set<std::string> names;
 
-scandirpp::get_values(".", std::inserter(names, names.back()), scandirpp::extract_name);
+scandirpp::get_values(".", std::inserter(names, names.begin()), scandirpp::extract_name);
 ```
 
 ### Low-level access
